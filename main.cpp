@@ -63,23 +63,109 @@ void init() {
             game.aliens[y][x] = true;
 
     std::srand((unsigned int)time(0));
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void drawPlayer() {
-    glColor3f(0.0f, 1.0f, 0.0f); // Green
+    float cx = game.playerX;
+    float baseY = 20.0f;
+
+    // main body
+    glColor3f(0.2f, 0.8f, 1.0f);
+    glBegin(GL_POLYGON);
+    glVertex2f(cx - 12, baseY + 16);
+    glVertex2f(cx - 18, baseY + 12);
+    glVertex2f(cx - 12, baseY + 4);
+    glVertex2f(cx + 12, baseY + 4);
+    glVertex2f(cx + 18, baseY + 12);
+    glVertex2f(cx + 12, baseY + 16);
+    glEnd();
+
+    // cockpit
+    glColor3f(0.3f, 0.3f, 1.0f);
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 32; ++i) {
+        float theta = i / 32.0f * 3.14159f;
+        float x = cx + cos(theta) * 6;
+        float y = baseY + 16 + sin(theta) * 8;
+        glVertex2f(x, y);
+    }
+    glEnd();
+
+    // nose
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(cx, baseY + 34);
+    glVertex2f(cx - 8, baseY + 16);
+    glVertex2f(cx + 8, baseY + 16);
+    glEnd();
+
+    // left wing
+    glColor3f(0.7f, 0.7f, 0.7f);
+    glBegin(GL_POLYGON);
+    glVertex2f(cx - 12, baseY + 12);
+    glVertex2f(cx - 28, baseY + 6);
+    glVertex2f(cx - 24, baseY + 2);
+    glVertex2f(cx - 12, baseY + 4);
+    glEnd();
+
+    // right wing
+    glBegin(GL_POLYGON);
+    glVertex2f(cx + 12, baseY + 12);
+    glVertex2f(cx + 28, baseY + 6);
+    glVertex2f(cx + 24, baseY + 2);
+    glVertex2f(cx + 12, baseY + 4);
+    glEnd();
+
+    // left engine
+    glColor3f(0.8f, 0.4f, 0.1f);
     glBegin(GL_QUADS);
-    glVertex2f(game.playerX - 20, 20);
-    glVertex2f(game.playerX + 20, 20);
-    glVertex2f(game.playerX + 20, 50);
-    glVertex2f(game.playerX - 20, 50);
+    glVertex2f(cx - 22, baseY + 0);
+    glVertex2f(cx - 18, baseY + 0);
+    glVertex2f(cx - 18, baseY + 4);
+    glVertex2f(cx - 22, baseY + 4);
+    glEnd();
+
+    // right engine
+    glBegin(GL_QUADS);
+    glVertex2f(cx + 18, baseY + 0);
+    glVertex2f(cx + 22, baseY + 0);
+    glVertex2f(cx + 22, baseY + 4);
+    glVertex2f(cx + 18, baseY + 4);
+    glEnd();
+
+    // engine flames (flicker effect)
+    glColor3f(1.0f, 0.8f, 0.1f);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(cx - 20, baseY + 0);
+    glVertex2f(cx - 19, baseY - 8 - rand() % 4);
+    glVertex2f(cx - 21, baseY - 8 - rand() % 4);
+    glVertex2f(cx + 20, baseY + 0);
+    glVertex2f(cx + 19, baseY - 8 - rand() % 4);
+    glVertex2f(cx + 21, baseY - 8 - rand() % 4);
+    glEnd();
+
+    // highlights on body
+    glColor3f(0.8f, 1.0f, 1.0f);
+    glBegin(GL_LINES);
+    glVertex2f(cx, baseY + 4);
+    glVertex2f(cx, baseY + 16);
+    glEnd();
+    glBegin(GL_LINES);
+    glVertex2f(cx - 6, baseY + 8);
+    glVertex2f(cx - 6, baseY + 14);
+    glVertex2f(cx + 6, baseY + 8);
+    glVertex2f(cx + 6, baseY + 14);
     glEnd();
 }
 
 void drawAliens() {
-    glColor3f(1.0f, 0.0f, 0.0f); // Red
+    glColor3f(1.0f, 0.0f, 0.0f);
     for (int y = 0; y < ALIEN_ROWS; y++) {
         for (int x = 0; x < ALIEN_COLS; x++) {
-            if (!game.aliens[y][x]) continue; // Skip dead aliens
+            if (!game.aliens[y][x]) continue; 
             glBegin(GL_QUADS);
             float ax = game.alienX + x * 60;
             float ay = game.alienY - y * 40;
@@ -93,24 +179,37 @@ void drawAliens() {
 }
 
 void drawBullets() {
-    // Player bullets (white)
-    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // player bullets (thin laser)
     for (auto& b : game.playerBullets) {
+        // outer glow (optional, for effect)
+        glColor4f(0.2f, 1.0f, 1.0f, 0.18f);
+        glBegin(GL_POLYGON);
+        for (int i = 0; i < 16; ++i) {
+            float theta = 2.0f * 3.14159f * i / 16;
+            glVertex2f(b.x + cos(theta) * 3, b.y + sin(theta) * 12);
+        }
+        glEnd();
+
+        // thin core
+        glColor3f(0.8f, 1.0f, 1.0f);
         glBegin(GL_QUADS);
-        glVertex2f(b.x - 2, b.y - 8);
-        glVertex2f(b.x + 2, b.y - 8);
-        glVertex2f(b.x + 2, b.y + 8);
-        glVertex2f(b.x - 2, b.y + 8);
+        glVertex2f(b.x - 1, b.y - 10);
+        glVertex2f(b.x + 1, b.y - 10);
+        glVertex2f(b.x + 1, b.y + 14);
+        glVertex2f(b.x - 1, b.y + 14);
         glEnd();
     }
-    // Alien bullets (yellow)
-    glColor3f(1.0f, 1.0f, 0.0f);
+
+    // alien bullets (yellow)
     for (auto& b : game.alienBullets) {
-        glBegin(GL_QUADS);
-        glVertex2f(b.x - 2, b.y - 8);
-        glVertex2f(b.x + 2, b.y - 8);
-        glVertex2f(b.x + 2, b.y + 8);
-        glVertex2f(b.x - 2, b.y + 8);
+        float pulse = 1.0f + 0.3f * sin(b.y * 0.25f);
+        glColor3f(0.6f + 0.3f * pulse, 1.0f - 0.4f * pulse, 0.1f);
+        glBegin(GL_POLYGON);
+        for (int i = 0; i < 18; ++i) {
+            float theta = 2.0f * 3.14159f * i / 18;
+            glVertex2f(b.x + cos(theta) * 7 * pulse, b.y + sin(theta) * 7 * pulse);
+        }
         glEnd();
     }
 }
@@ -150,6 +249,16 @@ void keyboard(unsigned char key, int, int) {
 void keyboardUp(unsigned char key, int, int) {
     if (key == 'a' || key == 'A') game.leftPressed = false;
     if (key == 'd' || key == 'D') game.rightPressed = false;
+}
+
+void specialInput(int key, int, int) {
+    if (key == GLUT_KEY_LEFT)  game.leftPressed = true;
+    if (key == GLUT_KEY_RIGHT) game.rightPressed = true;
+}
+
+void specialUpInput(int key, int, int) {
+    if (key == GLUT_KEY_LEFT)  game.leftPressed = false;
+    if (key == GLUT_KEY_RIGHT) game.rightPressed = false;
 }
 
 void checkCollisions() {
@@ -204,16 +313,6 @@ void checkCollisions() {
         }
         ++it;
     }
-}
-
-void specialInput(int key, int, int) {
-    if (key == GLUT_KEY_LEFT)  game.leftPressed = true;
-    if (key == GLUT_KEY_RIGHT) game.rightPressed = true;
-}
-
-void specialUpInput(int key, int, int) {
-    if (key == GLUT_KEY_LEFT)  game.leftPressed = false;
-    if (key == GLUT_KEY_RIGHT) game.rightPressed = false;
 }
 
 void update(int) {
