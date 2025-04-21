@@ -161,19 +161,76 @@ void drawPlayer() {
     glEnd();
 }
 
+void drawEvilAlienShip(float x, float y) {
+    // main hull (dark, spiky, compact)
+    glColor3f(0.35f, 0.05f, 0.15f);
+    glBegin(GL_POLYGON);
+    glVertex2f(x, y + 10);
+    glVertex2f(x - 10, y + 4);
+    glVertex2f(x - 13, y - 4);
+    glVertex2f(x - 6, y - 12);
+    glVertex2f(x, y - 16);
+    glVertex2f(x + 6, y - 12);
+    glVertex2f(x + 13, y - 4);
+    glVertex2f(x + 10, y + 4);
+    glEnd();
+
+    // cockpit
+    glColor3f(0.9f, 0.1f, 0.2f);
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 14; ++i) {
+        float theta = 2.0f * 3.14159f * i / 14;
+        glVertex2f(x + cos(theta) * 3.5f, y - 1 + sin(theta) * 3.5f);
+    }
+    glEnd();
+
+    // side spikes
+    glColor3f(0.6f, 0.0f, 0.2f);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(x - 13, y - 4);
+    glVertex2f(x - 18, y - 8);
+    glVertex2f(x - 6, y - 12);
+
+    glVertex2f(x + 13, y - 4);
+    glVertex2f(x + 18, y - 8);
+    glVertex2f(x + 6, y - 12);
+    glEnd();
+
+    // glowing spoons
+    glColor3f(1.0f, 0.9f, 0.2f);
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 8; ++i) {
+        float theta = 2.0f * 3.14159f * i / 8;
+        glVertex2f(x - 4.5f + cos(theta) * 1.0f, y - 7 + sin(theta) * 1.0f);
+    }
+    glEnd();
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 8; ++i) {
+        float theta = 2.0f * 3.14159f * i / 8;
+        glVertex2f(x + 4.5f + cos(theta) * 1.0f, y - 7 + sin(theta) * 1.0f);
+    }
+    glEnd();
+
+    // lower mandibles (dark)
+    glColor3f(0.25f, 0.0f, 0.1f);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(x - 3, y - 14);
+    glVertex2f(x - 1, y - 19);
+    glVertex2f(x, y - 16);
+
+    glVertex2f(x + 3, y - 14);
+    glVertex2f(x + 1, y - 19);
+    glVertex2f(x, y - 16);
+    glEnd();
+}
+
 void drawAliens() {
-    glColor3f(1.0f, 0.0f, 0.0f);
     for (int y = 0; y < ALIEN_ROWS; y++) {
         for (int x = 0; x < ALIEN_COLS; x++) {
-            if (!game.aliens[y][x]) continue; 
-            glBegin(GL_QUADS);
+            if (!game.aliens[y][x]) continue;
             float ax = game.alienX + x * 60;
             float ay = game.alienY - y * 40;
-            glVertex2f(ax - 15, ay - 15);
-            glVertex2f(ax + 15, ay - 15);
-            glVertex2f(ax + 15, ay + 15);
-            glVertex2f(ax - 15, ay + 15);
-            glEnd();
+            drawEvilAlienShip(ax, ay);
         }
     }
 }
@@ -235,6 +292,7 @@ void keyboard(unsigned char key, int, int) {
         game.aliensRight = true;
         game.playerBullets.clear();
         game.alienBullets.clear();
+        game.alienSpeed = 0.5f;
         game.score = 0;
         game.gameOver = false;
         for (int y = 0; y < ALIEN_ROWS; y++)
@@ -461,6 +519,7 @@ void display() {
 }
 
 int main(int argc, char** argv) {
+
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowSize(WIDTH, HEIGHT);
