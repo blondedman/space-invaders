@@ -41,6 +41,13 @@ struct game {
     int round = 1;
     int score = 0;
     bool gameOver = false;
+
+    bool slowAlienBulletsActive = false;
+    int slowAlienBulletsTimer = 0; // frames or ms
+
+    // power-ups
+    struct powerup { float x, y; int type; int timer; };
+    std::vector<powerup> powerups;
 } game;
 
 // utility function: drawing a string using GLUT bitmap font
@@ -271,6 +278,21 @@ void drawBullets() {
     }
 }
 
+void drawPowerups() {
+    for (auto& p : game.powerups) {
+        glColor3f(0.3f, 1.0f, 0.7f);
+        glBegin(GL_POLYGON);
+        for (int i = 0; i < 16; ++i) {
+            float theta = 2.0f * 3.14159f * i / 16;
+            glVertex2f(p.x + cos(theta) * 8, p.y + sin(theta) * 8);
+        }
+        glEnd();
+        // optional: draw a symbol for slow (e.g., "S")
+        glColor3f(0.1f, 0.2f, 0.1f);
+        drawString(GLUT_BITMAP_HELVETICA_18, "S", p.x - 4, p.y - 5);
+    }
+}
+
 void keyboard(unsigned char key, int, int) {
     if (key == 'a' || key == 'A') game.leftPressed = true;
     if (key == 'd' || key == 'D') game.rightPressed = true;
@@ -323,12 +345,12 @@ void checkCollisions() {
     for (auto it = game.playerBullets.begin(); it != game.playerBullets.end(); ) {
         bool bulletUsed = false;
 
-        // Check collision with all aliens
+        // check collision with all aliens
         for (int y = 0; y < ALIEN_ROWS && !bulletUsed; y++) {
             for (int x = 0; x < ALIEN_COLS && !bulletUsed; x++) {
                 if (!game.aliens[y][x]) continue;
 
-                // Alien bounding box
+                // alien bounding box
                 float ax = game.alienX + x * 60;
                 float ay = game.alienY - y * 40;
                 float alienLeft = ax - 15;
@@ -336,7 +358,7 @@ void checkCollisions() {
                 float alienBottom = ay - 15;
                 float alienTop = ay + 15;
 
-                // Bullet bounding box
+                // bullet bounding box
                 float bulletLeft = it->x - 2;
                 float bulletRight = it->x + 2;
                 float bulletBottom = it->y - 8;
@@ -348,17 +370,23 @@ void checkCollisions() {
                     bulletBottom < alienTop &&
                     bulletTop > alienBottom) {
 
-                    // Destroy alien and bullet
+                    // destroy alien and bullet
                     game.aliens[y][x] = false;
+
+                    // power-up logic
+                    if (rand() % 10 == 0) { // 10% chance
+                        game.powerups.push_back({ ax, ay, 1, 0 }); // type 1 = slow bullets
+                    }
+
                     game.score += 100;
                     game.hits++;
                     it = game.playerBullets.erase(it);
-                    bulletUsed = true; // Exit both loops
+                    bulletUsed = true;
                 }
             }
         }
 
-        if (!bulletUsed) ++it; // Only increment if bullet wasn't used
+        if (!bulletUsed) ++it; // only increment if bullet wasn't used
     }
 
     // alien bullets vs player (unchanged)
@@ -371,11 +399,33 @@ void checkCollisions() {
         }
         ++it;
     }
+
+    // power-up collection
+    for (auto it = game.powerups.begin(); it != game.powerups.end(); ) {
+        // check if player collects the powerup (e.g., overlap with player)
+        if (fabs(it->x - game.playerX) < 20 && it->y < 60) { // adjust bounds as needed
+            if (it->type == 1) { // 1 = slow alien bullets
+                game.slowAlienBulletsActive = true;
+                game.slowAlienBulletsTimer = 600; // e.g., 10 seconds at 60 FPS
+            }
+            it = game.powerups.erase(it); // remove collected powerup
+        }
+        else {
+            ++it;
+        }
+    }
+
 }
 
 void update(int) {
     if (!game.gameOver) {
-        
+        // power-up
+        if (game.slowAlienBulletsActive) {
+            game.slowAlienBulletsTimer--;
+            if (game.slowAlienBulletsTimer <= 0)
+                game.slowAlienBulletsActive = false;
+        }
+
         // player movement
         if (game.leftPressed) game.playerX -= game.playerSpeed;
         if (game.rightPressed) game.playerX += game.playerSpeed;
@@ -457,13 +507,14 @@ void update(int) {
                     if (game.aliens[y][x])
                         aliveAliens.push_back({ y, x });
             if (!aliveAliens.empty()) {
+                float alienBulletSpeed = game.slowAlienBulletsActive ? 1.5f : 4.0f;
                 int idx = rand() % aliveAliens.size();
                 int ay = aliveAliens[idx].first;
                 int ax = aliveAliens[idx].second;
                 game.alienBullets.push_back({
                     game.alienX + ax * 60,
                     game.alienY - ay * 40,
-                    4.0f
+                    alienBulletSpeed
                     });
             }
         }
@@ -476,7 +527,7 @@ void update(int) {
             for (int x = 0; x < ALIEN_COLS; x++)
                 if (game.aliens[y][x]) {
                     float ay = game.alienY - y * 40;
-                    if (ay - 15 < 60) // Approaching player
+                    if (ay - 15 < 60) // approaching player
                         game.gameOver = true;
                 }
     }
