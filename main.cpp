@@ -48,6 +48,7 @@ struct game {
     // power-ups
     struct powerup { float x, y; int type; int timer; };
     std::vector<powerup> powerups;
+
 } game;
 
 // utility function: drawing a string using GLUT bitmap font
@@ -287,7 +288,7 @@ void drawPowerups() {
             glVertex2f(p.x + cos(theta) * 8, p.y + sin(theta) * 8);
         }
         glEnd();
-        // optional: draw a symbol for slow (e.g., "S")
+        // optional: symbol for slow (e.g., "S")
         glColor3f(0.1f, 0.2f, 0.1f);
         drawString(GLUT_BITMAP_HELVETICA_18, "S", p.x - 4, p.y - 5);
     }
@@ -374,7 +375,7 @@ void checkCollisions() {
                     game.aliens[y][x] = false;
 
                     // power-up logic
-                    if (rand() % 10 == 0) { // 10% chance
+                    if (rand() % 50 == 0) { // 50% chance
                         game.powerups.push_back({ ax, ay, 1, 0 }); // type 1 = slow bullets
                     }
 
@@ -425,6 +426,15 @@ void update(int) {
             if (game.slowAlienBulletsTimer <= 0)
                 game.slowAlienBulletsActive = false;
         }
+
+        for (auto& p : game.powerups) {
+            p.y -= 2.0f; // adjust speed as desired
+        }
+        game.powerups.erase(
+            std::remove_if(game.powerups.begin(), game.powerups.end(),
+                [](const game::powerup& p) { return p.y < 0; }),
+            game.powerups.end()
+        );
 
         // player movement
         if (game.leftPressed) game.playerX -= game.playerSpeed;
@@ -542,6 +552,7 @@ void display() {
     drawPlayer();
     drawAliens();
     drawBullets();
+    drawPowerups();
 
     //  game score
     glColor3f(1.0f, 1.0f, 1.0f);
