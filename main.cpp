@@ -53,6 +53,9 @@ struct game {
     bool homingBulletsActive = false;
     int homingBulletsTimer = 0; // frames or ms
 
+    bool shieldActive = false;
+    int shieldTimer = 0; // frames or ms
+
 
     // power-ups
     struct powerup { float x, y; int type; int timer; };
@@ -88,6 +91,19 @@ void init() {
 void drawPlayer() {
     float cx = game.playerX;
     float baseY = 20.0f;
+    
+    // draw shield if active
+    if (game.shieldActive) {
+        float cx = game.playerX;
+        float baseY = 20.0f;
+        glColor4f(0.3f, 0.7f, 1.0f, 0.28f); // blue, semi-transparent
+        glBegin(GL_POLYGON);
+        for (int i = 0; i < 32; ++i) {
+            float theta = 2.0f * 3.14159f * i / 32;
+            glVertex2f(cx + cos(theta) * 28, baseY + 16 + sin(theta) * 28);
+        }
+        glEnd();
+    }
 
     // main body
     glColor3f(0.2f, 0.8f, 1.0f);
@@ -417,12 +433,16 @@ void checkCollisions() {
                     game.aliens[y][x] = false;
 
                     // power-ups logic
-                    if (rand() % 10 == 0) { // 10% chance
+                    if (rand() % 10 == 0) {
                         game.powerups.push_back({ ax, ay, 1, 0 }); // type 1 = slow bullets
                     }
 
                     if (rand() % 10 == 0) {
                         game.powerups.push_back({ ax, ay, 2, 0 }); // type 2 = homing bullets
+                    }
+
+                    if (rand() % 15 == 0) { // ~6.7% chance
+                        game.powerups.push_back({ ax, ay, 3, 0 }); // type 3 = shield
                     }
 
                     game.score += 100;
@@ -436,14 +456,23 @@ void checkCollisions() {
         if (!bulletUsed) ++it; // only increment if bullet wasn't used
     }
 
-    // alien bullets vs player (unchanged)
+    // alien bullets vs player
     float px1 = game.playerX - 20, px2 = game.playerX + 20;
     float py1 = 20, py2 = 50;
     for (auto it = game.alienBullets.begin(); it != game.alienBullets.end(); ) {
         if (it->x > px1 && it->x < px2 && it->y > py1 && it->y < py2) {
-            game.gameOver = true;
-            break;
+            if (game.shieldActive) {
+                // shield active
+                it = game.alienBullets.erase(it);
+                continue;
+            }
+            else {
+                // no shield active
+                game.gameOver = true;
+                break;
+            }
         }
+
         ++it;
     }
 
@@ -459,6 +488,11 @@ void checkCollisions() {
                 game.homingBulletsActive = true;
                 game.homingBulletsTimer = 200; // 20 FPS
             }
+            if (it->type == 3) { // 3 = shield
+                game.shieldActive = true;
+                game.shieldTimer = 600; // 60 FPS
+            }
+
             it = game.powerups.erase(it); // remove collected powerup
         }
         else {
@@ -481,6 +515,12 @@ void update(int) {
             game.homingBulletsTimer--;
             if (game.homingBulletsTimer <= 0)
                 game.homingBulletsActive = false;
+        }
+
+        if (game.shieldActive) {
+            game.shieldTimer--;
+            if (game.shieldTimer <= 0)
+                game.shieldActive = false;
         }
 
         for (auto& p : game.powerups) {
