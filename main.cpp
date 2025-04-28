@@ -290,24 +290,46 @@ void drawBullets() {
 
 void drawPowerups() {
     for (auto& p : game.powerups) {
-        glColor3f(0.3f, 1.0f, 0.7f);
+
+        // color based on power-up type
+        float r = 0.3f, g = 1.0f, b = 0.7f; // default: green (slow bullets)
+        if (p.type == 1) { // slow alien bullets
+            r = 0.3f; g = 1.0f; b = 0.7f; // green/cyan
+        }
+        else if (p.type == 2) { // homing bullets
+            r = 1.0f; g = 0.4f; b = 0.2f; // orange/red
+        }
+        else if (p.type == 3) { // shield (example)
+            r = 0.5f; g = 0.7f; b = 1.0f; // blue
+        }
+        else if (p.type == 4) { // double shot (example)
+            r = 1.0f; g = 1.0f; b = 0.3f; // yellow
+        }
+        // outer glow
+        glColor4f(r, g, b, 0.18f);
         glBegin(GL_POLYGON);
-        for (int i = 0; i < 16; ++i) {
-            float theta = 2.0f * 3.14159f * i / 16;
-            glVertex2f(p.x + cos(theta) * 8, p.y + sin(theta) * 8);
+        for (int i = 0; i < 24; ++i) {
+            float theta = 2.0f * 3.14159f * i / 24;
+            glVertex2f(p.x + cos(theta) * 14, p.y + sin(theta) * 14);
         }
         glEnd();
 
-        if (p.type == 2) {
-            glColor3f(0.1f, 0.2f, 0.1f);
-            drawString(GLUT_BITMAP_HELVETICA_18, "H", p.x - 6.5, p.y - 7);
+        // main orb
+        glColor3f(r, g, b);
+        glBegin(GL_POLYGON);
+        for (int i = 0; i < 20; ++i) {
+            float theta = 2.0f * 3.14159f * i / 20;
+            glVertex2f(p.x + cos(theta) * 8, p.y + sin(theta) * 8);
         }
-
-        if (p.type == 1) {
-            glColor3f(0.1f, 0.2f, 0.1f);
-            drawString(GLUT_BITMAP_HELVETICA_18, "S", p.x - 6.5, p.y - 7);
+        glEnd();
+        // inner highlight
+        glColor4f(1.0f, 1.0f, 1.0f, 0.28f);
+        glBegin(GL_POLYGON);
+        for (int i = 0; i < 12; ++i) {
+            float theta = 2.0f * 3.14159f * i / 12;
+            glVertex2f(p.x + cos(theta) * 4, p.y + sin(theta) * 4);
         }
-        
+        glEnd();
     }
 }
 
@@ -395,7 +417,7 @@ void checkCollisions() {
                     game.aliens[y][x] = false;
 
                     // power-ups logic
-                    if (rand() % 50 == 0) { // 50% chance
+                    if (rand() % 10 == 0) { // 10% chance
                         game.powerups.push_back({ ax, ay, 1, 0 }); // type 1 = slow bullets
                     }
 
@@ -431,11 +453,11 @@ void checkCollisions() {
         if (fabs(it->x - game.playerX) < 20 && it->y < 60) { // adjust bounds as needed
             if (it->type == 1) { // 1 = slow alien bullets
                 game.slowAlienBulletsActive = true;
-                game.slowAlienBulletsTimer = 600; // e.g., 10 seconds at 60 FPS
+                game.slowAlienBulletsTimer = 200; // 20 FPS
             }
             if (it->type == 2) { // 2 = homing bullets
                 game.homingBulletsActive = true;
-                game.homingBulletsTimer = 600;
+                game.homingBulletsTimer = 200; // 20 FPS
             }
             it = game.powerups.erase(it); // remove collected powerup
         }
@@ -489,19 +511,23 @@ void update(int) {
 
         if (allDead) {
             game.round++;
+            
             // reset aliens
             for (int y = 0; y < ALIEN_ROWS; y++)
                 for (int x = 0; x < ALIEN_COLS; x++)
                     game.aliens[y][x] = true;
+            
             // reset alien position
             game.alienX = 50;
             game.alienY = 400;
             game.aliensRight = true;
             game.alienSpeed *= 1.5f;
+            
             // clear bullets
             game.playerBullets.clear();
             game.alienBullets.clear();
         }
+
         // alien movement
         int aliveLeft = ALIEN_COLS, aliveRight = -1;
         for (int y = 0; y < ALIEN_ROWS; y++)
@@ -527,7 +553,7 @@ void update(int) {
             }
         }
 
-        // update bullets
+        // update playerBullets
         for (auto& b : game.playerBullets) {
             if (b.homing) {
                 // Find nearest alive alien
@@ -567,6 +593,7 @@ void update(int) {
             }
         }
 
+        // update alienBullets
         for (auto& b : game.alienBullets) b.y -= b.speed;
 
         // remove off-screen bullets
