@@ -5,7 +5,7 @@
 #include <ctime>
 
 // game constants
-const int WIDTH = 800;
+const int WIDTH = 1000;
 const int HEIGHT = 600;
 const int ALIEN_ROWS = 4;
 const int ALIEN_COLS = 8;
@@ -29,7 +29,12 @@ struct game {
     bool aliens[ALIEN_ROWS][ALIEN_COLS];
 
     // bullets
-    struct bullet { float x, y, speed; };
+    struct bullet {
+        float x, y, speed;
+        float dx = 0, dy = 0; // direction for homing
+        bool homing = false;
+    };
+
     std::vector<bullet> playerBullets;
     std::vector<bullet> alienBullets;
     
@@ -44,6 +49,10 @@ struct game {
 
     bool slowAlienBulletsActive = false;
     int slowAlienBulletsTimer = 0; // frames or ms
+
+    bool homingBulletsActive = false;
+    int homingBulletsTimer = 0; // frames or ms
+
 
     // power-ups
     struct powerup { float x, y; int type; int timer; };
@@ -288,24 +297,35 @@ void drawPowerups() {
             glVertex2f(p.x + cos(theta) * 8, p.y + sin(theta) * 8);
         }
         glEnd();
-        // optional: symbol for slow (e.g., "S")
-        glColor3f(0.1f, 0.2f, 0.1f);
-        drawString(GLUT_BITMAP_HELVETICA_18, "S", p.x - 4, p.y - 5);
+
+        if (p.type == 2) {
+            glColor3f(0.1f, 0.2f, 0.1f);
+            drawString(GLUT_BITMAP_HELVETICA_18, "H", p.x - 6.5, p.y - 7);
+        }
+
+        if (p.type == 1) {
+            glColor3f(0.1f, 0.2f, 0.1f);
+            drawString(GLUT_BITMAP_HELVETICA_18, "S", p.x - 6.5, p.y - 7);
+        }
+        
     }
 }
 
 void keyboard(unsigned char key, int, int) {
+    
     if (key == 'a' || key == 'A') game.leftPressed = true;
     if (key == 'd' || key == 'D') game.rightPressed = true;
-    if (key == ' ' && !game.gameOver) { // Shoot
-        game.playerBullets.push_back({ game.playerX, 50, 8.0f });
+    
+    if (key == ' ' && !game.gameOver) {
+        game.totalShots++;
+        if (game.homingBulletsActive) {
+            game.playerBullets.push_back({ game.playerX, 50, 8.0f, 0, 1.0f, true });
+        }
+        else {
+            game.playerBullets.push_back({ game.playerX, 50, 8.0f });
+        }
     }
 
-    // accurcay handler
-    if (key == ' ' && !game.gameOver) {
-        game.playerBullets.push_back({ game.playerX, 50, 8.0f });
-        game.totalShots = game.totalShots + 2;
-    }
     // restart game on enter after game over
     if (key == 13 && game.gameOver) {
         // reset game state
@@ -374,9 +394,13 @@ void checkCollisions() {
                     // destroy alien and bullet
                     game.aliens[y][x] = false;
 
-                    // power-up logic
+                    // power-ups logic
                     if (rand() % 50 == 0) { // 50% chance
                         game.powerups.push_back({ ax, ay, 1, 0 }); // type 1 = slow bullets
+                    }
+
+                    if (rand() % 10 == 0) {
+                        game.powerups.push_back({ ax, ay, 2, 0 }); // type 2 = homing bullets
                     }
 
                     game.score += 100;
@@ -409,6 +433,10 @@ void checkCollisions() {
                 game.slowAlienBulletsActive = true;
                 game.slowAlienBulletsTimer = 600; // e.g., 10 seconds at 60 FPS
             }
+            if (it->type == 2) { // 2 = homing bullets
+                game.homingBulletsActive = true;
+                game.homingBulletsTimer = 600;
+            }
             it = game.powerups.erase(it); // remove collected powerup
         }
         else {
@@ -425,6 +453,12 @@ void update(int) {
             game.slowAlienBulletsTimer--;
             if (game.slowAlienBulletsTimer <= 0)
                 game.slowAlienBulletsActive = false;
+        }
+
+        if (game.homingBulletsActive) {
+            game.homingBulletsTimer--;
+            if (game.homingBulletsTimer <= 0)
+                game.homingBulletsActive = false;
         }
 
         for (auto& p : game.powerups) {
@@ -494,7 +528,45 @@ void update(int) {
         }
 
         // update bullets
-        for (auto& b : game.playerBullets) b.y += b.speed;
+        for (auto& b : game.playerBullets) {
+            if (b.homing) {
+                // Find nearest alive alien
+                float bestDist = 1e9, tx = 0, ty = 0;
+                bool found = false;
+                for (int y = 0; y < ALIEN_ROWS; y++) {
+                    for (int x = 0; x < ALIEN_COLS; x++) {
+                        if (!game.aliens[y][x]) continue;
+                        float ax = game.alienX + x * 60;
+                        float ay = game.alienY - y * 40;
+                        float dx = ax - b.x, dy = ay - b.y;
+                        float dist = dx * dx + dy * dy;
+                        if (dist < bestDist) {
+                            bestDist = dist;
+                            tx = ax;
+                            ty = ay;
+                            found = true;
+                        }
+                    }
+                }
+                if (found) {
+                    float vx = tx - b.x, vy = ty - b.y;
+                    float len = sqrt(vx * vx + vy * vy);
+                    if (len > 1e-2) {
+                        vx /= len; vy /= len;
+                        b.dx = b.dx * 0.85f + vx * 0.15f;
+                        b.dy = b.dy * 0.85f + vy * 0.15f;
+                        float dlen = sqrt(b.dx * b.dx + b.dy * b.dy);
+                        b.dx /= dlen; b.dy /= dlen;
+                    }
+                }
+                b.x += b.dx * b.speed;
+                b.y += b.dy * b.speed;
+            }
+            else {
+                b.y += b.speed;
+            }
+        }
+
         for (auto& b : game.alienBullets) b.y -= b.speed;
 
         // remove off-screen bullets
