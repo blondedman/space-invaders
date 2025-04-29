@@ -45,6 +45,7 @@ struct game {
     // game state
     int round = 1;
     int score = 0;
+    bool paused = false;
     bool gameOver = false;
 
     bool slowAlienBulletsActive = false;
@@ -315,7 +316,7 @@ void drawPowerups() {
         else if (p.type == 2) { // homing bullets
             r = 1.0f; g = 0.4f; b = 0.2f; // orange/red
         }
-        else if (p.type == 3) { // shield (example)
+        else if (p.type == 3) { // shield
             r = 0.5f; g = 0.7f; b = 1.0f; // blue
         }
         else if (p.type == 4) { // double shot (example)
@@ -351,6 +352,11 @@ void drawPowerups() {
 
 void keyboard(unsigned char key, int, int) {
     
+    if (key == 27) { // ESC key
+        game.paused = !game.paused; // Toggle pause on/off
+        return;
+    }
+
     if (key == 'a' || key == 'A') game.leftPressed = true;
     if (key == 'd' || key == 'D') game.rightPressed = true;
     
@@ -441,7 +447,7 @@ void checkCollisions() {
                         game.powerups.push_back({ ax, ay, 2, 0 }); // type 2 = homing bullets
                     }
 
-                    if (rand() % 15 == 0) { // ~6.7% chance
+                    if (rand() % 20 == 0) {
                         game.powerups.push_back({ ax, ay, 3, 0 }); // type 3 = shield
                     }
 
@@ -502,7 +508,13 @@ void checkCollisions() {
 
 }
 
-void update(int) {
+void update(int)     {
+    
+    if (game.paused) {
+        glutTimerFunc(16, update, 0); // timer running for input
+        return;
+    }
+
     if (!game.gameOver) {
         // power-up
         if (game.slowAlienBulletsActive) {
@@ -709,7 +721,7 @@ void display() {
     char accStr[32];
     sprintf_s(accStr, "ACCURACY: %.1f%%", accuracy);
     drawString(GLUT_BITMAP_HELVETICA_18, accStr,WIDTH - 190, HEIGHT - 30);
-    
+
     // game over
     if (game.gameOver) {
         drawString(GLUT_BITMAP_HELVETICA_18, "GAME OVER", WIDTH / 2 - 60, HEIGHT / 2);
