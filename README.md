@@ -6,4 +6,5 @@
 - classic Space Invaders gameplay
 - score and shooting accuracy display
 - round-based progression (aliens respawn each round, speed increases)
-- controls: A/D or LEFT/RIGHT arrows to move, SPACE to shoot, ENTER to restart
+- additional random power-ups including slow bullets, homing bullets and shield
+- controls: A/D or LEFT/RIGHT arrows to move, SPACE to shoot, ENTER to restart, ESC to pause
