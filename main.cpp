@@ -319,9 +319,7 @@ void drawPowerups() {
         else if (p.type == 3) { // shield
             r = 0.5f; g = 0.7f; b = 1.0f; // blue
         }
-        else if (p.type == 4) { // double shot (example)
-            r = 1.0f; g = 1.0f; b = 0.3f; // yellow
-        }
+        
         // outer glow
         glColor4f(r, g, b, 0.18f);
         glBegin(GL_POLYGON);
@@ -353,7 +351,7 @@ void drawPowerups() {
 void keyboard(unsigned char key, int, int) {
     
     if (key == 27) { // ESC key
-        game.paused = !game.paused; // Toggle pause on/off
+        game.paused = !game.paused; // toggle pause on/off
         return;
     }
 
@@ -395,6 +393,15 @@ void keyboardUp(unsigned char key, int, int) {
     if (key == 'a' || key == 'A') game.leftPressed = false;
     if (key == 'd' || key == 'D') game.rightPressed = false;
 }
+
+// glutSpecialFunc(specialInput); 
+// tells GLUT to call specialInput function when a special key is pressed
+
+//glutSpecialUpFunc(specialUpInput); 
+// tells GLUT to call specialUpInput function when a special key is released
+
+// both of these are used in update() 
+// lets us use the LEFT and RIGHT arrow keys
 
 void specialInput(int key, int, int) {
     if (key == GLUT_KEY_LEFT)  game.leftPressed = true;
@@ -488,15 +495,15 @@ void checkCollisions() {
         if (fabs(it->x - game.playerX) < 20 && it->y < 60) { // adjust bounds as needed
             if (it->type == 1) { // 1 = slow alien bullets
                 game.slowAlienBulletsActive = true;
-                game.slowAlienBulletsTimer = 200; // 20 FPS
+                game.slowAlienBulletsTimer = 200; // 3s at 60 FPS
             }
             if (it->type == 2) { // 2 = homing bullets
                 game.homingBulletsActive = true;
-                game.homingBulletsTimer = 200; // 20 FPS
+                game.homingBulletsTimer = 200; // 3s at 60 FPS
             }
             if (it->type == 3) { // 3 = shield
                 game.shieldActive = true;
-                game.shieldTimer = 600; // 60 FPS
+                game.shieldTimer = 600; // 10s 60 FPS
             }
 
             it = game.powerups.erase(it); // remove collected powerup
@@ -505,7 +512,6 @@ void checkCollisions() {
             ++it;
         }
     }
-
 }
 
 void update(int)     {
