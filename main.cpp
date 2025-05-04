@@ -614,7 +614,7 @@ void update(int)     {
         // update playerBullets
         for (auto& b : game.playerBullets) {
             if (b.homing) {
-                // Find nearest alive alien
+                // find nearest alive alien
                 float bestDist = 1e9, tx = 0, ty = 0;
                 bool found = false;
                 for (int y = 0; y < ALIEN_ROWS; y++) {
