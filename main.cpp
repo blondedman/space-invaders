@@ -272,6 +272,7 @@ void drawAliens() {
 void drawBullets() {
 
     // player bullets (thin laser)
+    /*
     for (auto& b : game.playerBullets) {
         // outer glow (optional, for effect)
         glColor4f(0.2f, 1.0f, 1.0f, 0.18f);
@@ -290,6 +291,33 @@ void drawBullets() {
         glVertex2f(b.x + 1, b.y + 14);
         glVertex2f(b.x - 1, b.y + 14);
         glEnd();
+    }
+    */
+    for (auto& b : game.playerBullets) {
+        float angle = atan2(b.dy, b.dx);
+
+        glPushMatrix();
+        glTranslatef(b.x, b.y, 0);
+        glRotatef(angle * 180.0f / 3.14159f - 90.0f, 0, 0, 1); // -90 so tip points along (dx,dy)
+
+        // outer glow (optional)
+        glColor4f(0.2f, 1.0f, 1.0f, 0.18f);
+        glBegin(GL_POLYGON);
+        for (int i = 0; i < 16; ++i) {
+            float theta = 2.0f * 3.14159f * i / 16;
+            glVertex2f(cos(theta) * 5, sin(theta) * 16);
+        }
+        glEnd();
+
+        // bullet tip (triangle)
+        glColor3f(0.8f, 1.0f, 1.0f);
+        glBegin(GL_TRIANGLES);
+        glVertex2f(0, 14);    // tip
+        glVertex2f(-3, -8);   // left base
+        glVertex2f(3, -8);    // right base
+        glEnd();
+
+        glPopMatrix();
     }
 
     // alien bullets (yellow)
@@ -314,7 +342,7 @@ void drawPowerups() {
             r = 0.3f; g = 1.0f; b = 0.7f; // green/cyan
         }
         else if (p.type == 2) { // homing bullets
-            r = 1.0f; g = 0.4f; b = 0.2f; // orange/red
+            r = 1.0f; g = 0.0f; b = 0.2f; // orange/red
         }
         else if (p.type == 3) { // shield
             r = 0.5f; g = 0.7f; b = 1.0f; // blue
@@ -364,7 +392,7 @@ void keyboard(unsigned char key, int, int) {
             game.playerBullets.push_back({ game.playerX, 50, 8.0f, 0, 1.0f, true });
         }
         else {
-            game.playerBullets.push_back({ game.playerX, 50, 8.0f });
+            game.playerBullets.push_back({ game.playerX, 50, 8.0f, 0, 1.0f, false });
         }
     }
 
@@ -516,6 +544,11 @@ void checkCollisions() {
 
 void update(int)     {
     
+    if (game.round > 15) {
+        game.round--;
+        game.gameOver = true;
+    }
+
     if (game.paused) {
         glutTimerFunc(16, update, 0); // timer running for input
         return;
@@ -579,7 +612,7 @@ void update(int)     {
             game.alienX = 50;
             game.alienY = 400;
             game.aliensRight = true;
-            game.alienSpeed *= 1.5f;
+            game.alienSpeed *= 1.25f;
             
             // clear bullets
             game.playerBullets.clear();
@@ -652,7 +685,16 @@ void update(int)     {
         }
 
         // update alienBullets
-        for (auto& b : game.alienBullets) b.y -= b.speed;
+        for (auto& b : game.alienBullets) {
+            if (game.round > 5 && (b.dx != 0.0f || b.dy != 0.0f)) {
+                b.x += b.dx * b.speed;
+                b.y -= b.dy * b.speed;
+            }
+            else {
+                b.y -= b.speed;
+            }
+        }
+
 
         // remove off-screen bullets
         game.playerBullets.erase(
@@ -678,12 +720,26 @@ void update(int)     {
                 int idx = rand() % aliveAliens.size();
                 int ay = aliveAliens[idx].first;
                 int ax = aliveAliens[idx].second;
+
+                // axfter round 5, allow diagonal bullets
+                float dx = 0.0f;
+                float dy = 1.0f;
+                if (game.round > 5) {
+                    int dir = rand() % 3; // 0: left-diagonal, 1: straight, 2: right-diagonal
+                    if (dir == 0) dx = -0.7f;
+                    else if (dir == 2) dx = 0.7f;
+                    // dy stays 1.0f
+                    float norm = sqrt(dx * dx + dy * dy);
+                    dx /= norm; dy /= norm; // normalize so speed stays consistent
+                }
                 game.alienBullets.push_back({
                     game.alienX + ax * 60,
                     game.alienY - ay * 40,
-                    alienBulletSpeed
+                    alienBulletSpeed,
+                    dx, dy
                     });
             }
+
         }
 
         // check collisions
